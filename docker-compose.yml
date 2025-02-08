@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  ml-agents:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_OS: "${BASE_OS}"
+        USE_CUDA: "${USE_CUDA:-false}"
+        CUDA_VERSION: "${CUDA_VERSION:-11.8.0}"
+        MLAGENTS_VERSION: "${MLAGENTS_VERSION:-0.30.0}"
+    container_name: unity-env
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./unity-project:/unity-project  # ホストとコンテナ間でプロジェクトを共有
+    command: /bin/bash
