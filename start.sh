@@ -21,7 +21,7 @@ done
 
 read -p "番号を入力してください [1-${#MLAGENTS_VERSIONS[@]}]: " mlagents_choice
 
-# ユーザーが選んだ番号に対応するリリース番号とバージョンを取得
+# 選択されたバージョンを取得
 if [[ "$mlagents_choice" =~ ^[0-9]+$ ]] && ((mlagents_choice >= 1 && mlagents_choice <= ${#MLAGENTS_VERSIONS[@]})); then
     selected_entry="${MLAGENTS_VERSIONS[$((mlagents_choice-1))]}"
     MLAGENTS_RELEASE="${selected_entry%%:*}"
@@ -32,25 +32,12 @@ else
     MLAGENTS_VERSION="0.30.0"
 fi
 
-# === 3. CUDA環境の利用可否を選択（手入力） ===
-read -p "🔧 CUDA を利用しますか？ (y/n): " use_cuda
+# === 3. CUDA環境の利用可否を選択（Docker 内限定） ===
+read -p "🔧 Docker 内で CUDA を利用しますか？ (y/n): " use_cuda
 if [[ "$use_cuda" == "y" ]]; then
     USE_CUDA=true
     read -p "🛠 使用する CUDA バージョンを入力してください (例: 11.8): " CUDA_VERSION
-
-    if ! command -v nvidia-smi &> /dev/null; then
-        read -p "⚠️ CUDA がインストールされていません。インストールしますか？ (y/n): " install_cuda
-        if [[ "$install_cuda" == "y" ]]; then
-            echo "📥 CUDA ${CUDA_VERSION} をインストールします..."
-            sudo apt update
-            sudo apt install -y nvidia-cuda-toolkit
-        else
-            echo "❌ CUDA 環境がないため、CPU環境で構築します。"
-            USE_CUDA=false
-        fi
-    else
-        echo "✅ CUDA はインストール済みです！"
-    fi
+    echo "✅ Docker コンテナ内で CUDA を使用します（ホストにはインストールしません）"
 else
     USE_CUDA=false
 fi
@@ -65,9 +52,9 @@ echo "🐍 Python Version    : $(python3 --version)"
 echo "📦 Installed Packages:"
 pip list | grep -E "mlagents|torch"
 if [[ "$USE_CUDA" == "true" ]]; then
-    echo "🚀 CUDA Enabled      : Yes (Version: ${CUDA_VERSION})"
+    echo "🚀 CUDA Enabled       : Yes (Version: ${CUDA_VERSION})"
 else
-    echo "🚀 CUDA Enabled      : No (CPU only)"
+    echo "🚀 CUDA Enabled       : No (CPU only)"
 fi
 echo "----------------------------------"
 
@@ -79,7 +66,8 @@ fi
 
 # === 5. Dockerコンテナをビルド & 起動 ===
 echo "🚀 Dockerコンテナをビルド & 起動します..."
-docker-compose up --build -d
+docker-compose build --build-arg USE_CUDA=$USE_CUDA --build-arg CUDA_VERSION=$CUDA_VERSION --build-arg MLAGENTS_VERSION=$MLAGENTS_VERSION
+docker-compose up -d
 
 echo "✅ コンテナが起動しました。コンテナに入るには以下を実行してください:"
 echo "   docker exec -it unity-env /bin/bash"
